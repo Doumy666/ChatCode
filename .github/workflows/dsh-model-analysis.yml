@@ -1,0 +1,49 @@
+name: DSH manual model catalog analysis
+"on":
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: dsh-prep-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  analyze:
+    if:
+      github.repository_owner == 'Doumy666' && github.actor == 'Doumy666' && github.ref == format('refs/heads/{0}',
+      github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout trusted base only
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Analyze with DSH
+        id: dsh
+        uses: Lixiaoyiao/DSH-action@497af93119203ca22af4f96f8fe89b3345ad665c
+        with:
+          deepseek-api-key: ${{ secrets.DEEPSEEK_API_KEY }}
+          dsh-version: 0.2.1-rc.2
+          dsh-mode: controlled
+          allow-write: "false"
+          natural-language-write: "false"
+          task-access: read
+          permission-profile: custom
+          allowed-tools: '["workspace.read","workspace.search"]'
+          disallowed-tools: '["workspace.edit","native.bash","native.subagent","native.web-search","native.web-fetch"]'
+          isolation: docker
+          worker-network: "false"
+          allow-plugin-install: "false"
+          run-tests: "false"
+          timeout-minutes: "15"
+          max-turns: "6"
+          max-findings: "10"
+          progress-comment: "false"
+          command: task
+          prompt:
+            Read sidecar/providers.mjs and catalog/models.json. Explain their consistency risks and suggest
+            checks for a maintainer. This is a static snapshot analysis, not a live model availability check. Do not
+            execute scripts, modify files, create PRs, fetch model lists, or contact notification or catalog backends.
+          context-files: '["catalog/models.json"]'
